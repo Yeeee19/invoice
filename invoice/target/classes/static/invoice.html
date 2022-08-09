@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>統一發票兌獎</title>
+        <script src="https://unpkg.com/vue@3.2.36/dist/vue.global.js"></script>
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    </head>
+    <body>
+        <div id="app">
+            <br>
+            <select v-model="month" @change="qryWinningList()">
+                <option value="" selected="selected" disabled="disabled">--- 選擇月份 ---</option>
+                <option v-for="list in lists" :value="list.value">{{ list.month }}</option>
+            </select>
+            <br>
+            <br>
+            <input type="text" maxlength="3" size="1" v-model="input">
+            <br>
+            <br>
+            <div>
+                特別獎： {{ superPrizeNo }}
+            </div>
+            <div>
+                特獎　： {{ spcPrizeNo }}
+            </div>
+            <div>
+                頭獎 1 ： {{ firstPrizeNo1 }}
+            </div>
+            <div>
+                頭獎 2 ： {{ firstPrizeNo2 }}
+            </div>
+            <div>
+                頭獎 3 ： {{ firstPrizeNo3 }}
+            </div>
+            <br>
+            <br>
+            <div>
+                末三碼相同:
+                <div v-for="hit in hit">{{ hit }}</div>
+            </div>
+            <br>
+            <br>
+            <div>
+                未中獎:
+                <div v-for="miss in miss">{{ miss }}</div>
+            </div>
+        </div>
+
+        <script>
+            const invoiceVueApp = Vue.createApp({
+                data() {
+                    return {
+                        month: "",
+                        superPrizeNo: "",
+                        spcPrizeNo: "",
+                        firstPrizeNo1: "",
+                        firstPrizeNo2: "",
+                        firstPrizeNo3: "",
+                        lists: [],
+                        hit: [],
+                        miss: [],
+                        input: ""
+                    };
+                },
+                mounted() {
+                    const period = 5;
+                    let drawDay = new Date();
+
+                    // 超過25號即視為已開獎, 統一設置為26號, 避免2月沒有30號, 造成月份-1沒有正確運行的問題
+                    if(drawDay.getDate() > 25){
+                        drawDay.setDate(26);
+                    }
+
+                    // 設置為最近的開獎月
+                    if(drawDay.getMonth() % 2 == 1){
+                        drawDay.setMonth(drawDay.getMonth()-2);
+                    } else if(drawDay.getDate() > 25){
+                        drawDay.setMonth(drawDay.getMonth()-1);
+                    } else {
+                        drawDay.setMonth(drawDay.getMonth()-3);
+                    }
+
+                    this.lists.push({value: String(drawDay.getFullYear()-1911) + String(drawDay.getMonth()+1).padStart(2, '0'),
+                                     month: String(drawDay.getFullYear()-1911) + " " + String(drawDay.getMonth()).padStart(2, '0') + "-" + String(drawDay.getMonth()+1).padStart(2, '0')});
+
+                    // 迴圈找出過往 i 期
+                    for (let i = 0; i < period-1; i++){
+                        drawDay.setMonth(drawDay.getMonth()-2);
+                        this.lists.push({value:String(drawDay.getFullYear()-1911) + String(drawDay.getMonth()+1).padStart(2, '0'),
+                        month: String(drawDay.getFullYear()-1911) + " " + String(drawDay.getMonth()).padStart(2, '0') + "-" + String(drawDay.getMonth()+1).padStart(2, '0')});
+                    }
+                },
+                watch: {
+                    input: function(value) {
+                        if(value.length == 3){
+                            if(value == this.superPrizeNo.substring(5, 8) ||
+                               value == this.spcPrizeNo.substring(5, 8) ||
+                               value == this.firstPrizeNo1.substring(5, 8) ||
+                               value == this.firstPrizeNo2.substring(5, 8) ||
+                               value == this.firstPrizeNo3.substring(5, 8)){
+
+                                this.hit.push(value);
+								alert("末三碼相符, 請核對");
+                            } else {
+                                this.miss.push(value);
+                            }
+
+                            this.input = "";
+                        }
+                    }
+                },
+                methods:{
+                    qryWinningList(){
+                        axios
+                            .get('/qryWinningList?invTerm='+this.month)
+                            .then(response => (this.superPrizeNo = response.data.superPrizeNo,
+                                               this.spcPrizeNo = response.data.spcPrizeNo,
+                                               this.firstPrizeNo1 = response.data.firstPrizeNo1,
+                                               this.firstPrizeNo2 = response.data.firstPrizeNo2,
+                                               this.firstPrizeNo3 = response.data.firstPrizeNo3
+                            ))
+                            .catch(function (error) {
+                                console.log(error);
+                            });
+                    }
+                }
+            }).mount("#app");
+        </script>
+    </body>
+</html>
